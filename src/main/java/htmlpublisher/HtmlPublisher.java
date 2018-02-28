@@ -310,7 +310,8 @@ public class HtmlPublisher extends Recorder {
                 if(archiveDir.exists())
                 {
                     String checksum = writeFile(reportLines, new File(targetDir.getRemote(), reportTarget.getWrapperName()));
-                    reportTarget.handleAction(build, checksum);
+                    String reportDisplayName = reportTarget.getDisplayName() != null ? resolveParametersInString(build, listener, reportTarget.getDisplayName()) : reportTarget.getReportName();
+                    reportTarget.handleAction(build, checksum, reportDisplayName);
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -337,7 +338,17 @@ public class HtmlPublisher extends Recorder {
         } else {
             ArrayList<Action> actions = new ArrayList<Action>();
             for (HtmlPublisherTarget target : this.reportTargets) {
-                actions.add(target.getProjectAction(project));
+                List<HtmlPublisherTarget.HTMLBuildAction> theactions = project.getLastBuild().getActions(HtmlPublisherTarget.HTMLBuildAction.class);
+                if (theactions.isEmpty()) {
+                    actions.add(target.getProjectAction(project, target.getReportName()));
+                } else {
+                    for (HtmlPublisherTarget.HTMLBuildAction currentAction: theactions
+                         ) {
+                        if (target.getReportName().equals(currentAction.getHTMLTarget().getReportName())) {
+                            actions.add(target.getProjectAction(project, currentAction.getDisplayName()));
+                        }
+                    }
+                }
                 if (project instanceof MatrixProject && ((MatrixProject) project).getActiveConfigurations() != null){
                     for (MatrixConfiguration mc : ((MatrixProject) project).getActiveConfigurations()){
                         try {

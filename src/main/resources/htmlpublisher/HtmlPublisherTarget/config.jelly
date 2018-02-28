@@ -19,6 +19,10 @@
     <f:textbox default="HTML Report"/>
   </f:entry>
 
+  <f:entry field="displayName" title="${%displayName.title}">
+    <f:textbox />
+  </f:entry>
+
   <f:advanced title="${%Publishing options}"> 
     <f:entry field="keepAll" title="${%keepAll.title}">
       <f:checkbox />

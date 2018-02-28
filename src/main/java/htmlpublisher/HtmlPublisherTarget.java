@@ -41,9 +41,16 @@ import org.kohsuke.stapler.DataBoundConstructor;
  */
 public class HtmlPublisherTarget extends AbstractDescribableImpl<HtmlPublisherTarget> {
     /**
-     * The name of the report to display for the build/project, such as "Code Coverage"
+     * The name of the report to use internally for the build/project, such as "Code Coverage". This value will also
+     * be used for display to the user if <code>displayName</code> is not set.
      */
     private final String reportName;
+
+    /**
+     * The name of the report to actually display, such as "Code Coverage". If not set, then <code>reportName</code>
+     * will be used instead. This attribute is primarily used to allow dynamic setting of the display name.
+     */
+    private final String displayName;
 
     /**
      * The path to the HTML report directory relative to the workspace.
@@ -110,8 +117,25 @@ public class HtmlPublisherTarget extends AbstractDescribableImpl<HtmlPublisherTa
      * @param allowMissing If true, blocks the build failure if the report is missing
      * @since 1.4
      */
-    @DataBoundConstructor
     public HtmlPublisherTarget(String reportName, String reportDir, String reportFiles, String reportTitles, boolean keepAll, boolean alwaysLinkToLastBuild, boolean allowMissing) {
+        this(reportName, reportDir, reportFiles, reportTitles, keepAll, alwaysLinkToLastBuild, allowMissing, null);
+    }
+
+    /**
+     * Constructor.
+     * @param reportName Report name
+     * @param reportDir Source directory in the job workspace
+     * @param reportFiles Files to be published
+     * @param reportTitles Files Title to be published
+     * @param keepAll True if the report should be stored for all builds
+     * @param alwaysLinkToLastBuild If true, the job action will refer the latest build.
+     *      Otherwise, the latest successful one will be referenced
+     * @param allowMissing If true, blocks the build failure if the report is missing
+     * @param displayName The display name for the report or <code>null</code> if none set
+     * @since 1.15
+     */
+    @DataBoundConstructor
+    public HtmlPublisherTarget(String reportName, String reportDir, String reportFiles, String reportTitles, boolean keepAll, boolean alwaysLinkToLastBuild, boolean allowMissing, String displayName) {
         this.reportName = StringUtils.trim(reportName);
         this.reportDir = StringUtils.trim(reportDir);
         this.reportFiles = StringUtils.trim(reportFiles);
@@ -119,6 +143,7 @@ public class HtmlPublisherTarget extends AbstractDescribableImpl<HtmlPublisherTa
         this.keepAll = keepAll;
         this.alwaysLinkToLastBuild = alwaysLinkToLastBuild;
         this.allowMissing = allowMissing;
+        this.displayName = displayName;
     }
 
     /**
@@ -140,6 +165,9 @@ public class HtmlPublisherTarget extends AbstractDescribableImpl<HtmlPublisherTa
         return this.reportName;
     }
 
+    public String getDisplayName() {
+        return this.displayName;
+    }
 
     public String getReportDir() {
         return this.reportDir;
@@ -191,10 +219,13 @@ public class HtmlPublisherTarget extends AbstractDescribableImpl<HtmlPublisherTa
     protected abstract class BaseHTMLAction implements Action {
         private HtmlPublisherTarget actualHtmlPublisherTarget;
 
+        private String reportDisplayName;
+
         protected transient AbstractItem project;
 
-        public BaseHTMLAction(HtmlPublisherTarget actualHtmlPublisherTarget) {
+        public BaseHTMLAction(HtmlPublisherTarget actualHtmlPublisherTarget, String reportDisplayName) {
             this.actualHtmlPublisherTarget = actualHtmlPublisherTarget;
+            this.reportDisplayName = reportDisplayName;
         }
 
         public String getUrlName() {
@@ -202,7 +233,7 @@ public class HtmlPublisherTarget extends AbstractDescribableImpl<HtmlPublisherTa
         }
 
         public String getDisplayName() {
-            String action = actualHtmlPublisherTarget.reportName;
+            String action = reportDisplayName != null ? reportDisplayName : actualHtmlPublisherTarget.reportName;
             return dir().exists() ? action : null;
         }
 
@@ -234,8 +265,8 @@ public class HtmlPublisherTarget extends AbstractDescribableImpl<HtmlPublisherTa
 
         private transient HTMLBuildAction actualBuildAction;
 
-        public HTMLAction(AbstractItem project, HtmlPublisherTarget actualHtmlPublisherTarget) {
-            super(actualHtmlPublisherTarget);
+        public HTMLAction(AbstractItem project, HtmlPublisherTarget actualHtmlPublisherTarget, String reportDisplayName) {
+            super(actualHtmlPublisherTarget, reportDisplayName);
             this.project = project;
         }
 
@@ -301,10 +332,12 @@ public class HtmlPublisherTarget extends AbstractDescribableImpl<HtmlPublisherTa
     public static class HTMLPublishedForProjectMarkerAction extends InvisibleAction implements RunAction2 {
         private transient Run<?, ?> build;
         private final HtmlPublisherTarget actualHtmlPublisherTarget;
+        private final String reportDisplayName;
 
-        public HTMLPublishedForProjectMarkerAction(Run<?, ?> build, HtmlPublisherTarget actualHtmlPublisherTarget) {
+        public HTMLPublishedForProjectMarkerAction(Run<?, ?> build, HtmlPublisherTarget actualHtmlPublisherTarget, String reportDisplayName) {
             this.actualHtmlPublisherTarget = actualHtmlPublisherTarget;
             this.build = build;
+            this.reportDisplayName = reportDisplayName;
         }
 
         @WithBridgeMethods(value = AbstractBuild.class, adapterMethod = "getAbstractBuildOwner")
@@ -330,6 +363,10 @@ public class HtmlPublisherTarget extends AbstractDescribableImpl<HtmlPublisherTa
         public HtmlPublisherTarget getHTMLTarget() {
             return actualHtmlPublisherTarget;
         }
+
+        public String getReportDisplayName() {
+            return reportDisplayName;
+        }
     }
 
     public class HTMLBuildAction extends BaseHTMLAction implements RunAction2 {
@@ -337,8 +374,8 @@ public class HtmlPublisherTarget extends AbstractDescribableImpl<HtmlPublisherTa
 
         private String wrapperChecksum;
 
-        public HTMLBuildAction(Run<?, ?> build, HtmlPublisherTarget actualHtmlPublisherTarget) {
-            super(actualHtmlPublisherTarget);
+        public HTMLBuildAction(Run<?, ?> build, HtmlPublisherTarget actualHtmlPublisherTarget, String reportDisplayName) {
+            super(actualHtmlPublisherTarget, reportDisplayName);
             this.build = build;
         }
 
@@ -390,22 +427,23 @@ public class HtmlPublisherTarget extends AbstractDescribableImpl<HtmlPublisherTa
 
     @Deprecated
     public void handleAction(Run<?, ?> build) {
-        handleAction(build, null);
+        handleAction(build, null, null);
     }
 
-    /* package */ void handleAction(Run<?, ?> build, String checksum) {
+    /* package */ void handleAction(Run<?, ?> build, String checksum, String reportDisplayName) {
         // Add build action, if coverage is recorded for each build
+
         if (this.keepAll) {
-            HTMLBuildAction a = new HTMLBuildAction(build, this);
+            HTMLBuildAction a = new HTMLBuildAction(build, this, reportDisplayName);
             a.setWrapperChecksum(checksum);
             build.addAction(a);
         } else { // Othwewise we add a hidden marker
-            build.addAction(new HTMLPublishedForProjectMarkerAction(build, this));
+            build.addAction(new HTMLPublishedForProjectMarkerAction(build, this, reportDisplayName));
         }
     }
 
-    public Action getProjectAction(AbstractItem item) {
-        return new HTMLAction(item, this);
+    public Action getProjectAction(AbstractItem item, String reportDisplayName) {
+        return new HTMLAction(item, this, reportDisplayName);
     }
 
     /**
@@ -449,6 +487,7 @@ public class HtmlPublisherTarget extends AbstractDescribableImpl<HtmlPublisherTa
         hash = 97 * hash + (this.alwaysLinkToLastBuild ? 1 : 0);
         hash = 97 * hash + (this.keepAll ? 1 : 0);
         hash = 97 * hash + (this.allowMissing ? 1 : 0);
+        hash = 97 * hash + (this.displayName.hashCode());
         return hash;
     }
 
@@ -462,6 +501,9 @@ public class HtmlPublisherTarget extends AbstractDescribableImpl<HtmlPublisherTa
         }
         final HtmlPublisherTarget other = (HtmlPublisherTarget) obj;
         if ((this.reportName == null) ? (other.reportName != null) : !this.reportName.equals(other.reportName)) {
+            return false;
+        }
+        if ((this.displayName == null) ? (other.displayName != null) : !this.displayName.equals(other.displayName)) {
             return false;
         }
         if ((this.reportDir == null) ? (other.reportDir != null) : !this.reportDir.equals(other.reportDir)) {

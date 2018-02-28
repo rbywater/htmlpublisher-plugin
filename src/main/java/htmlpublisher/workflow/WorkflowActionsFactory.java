@@ -59,14 +59,14 @@ public class WorkflowActionsFactory extends TransientActionFactory<Job> {
                 // If reports are being saved on the build level (keep for all builds)
                 List<HtmlPublisherTarget.HTMLBuildAction> reports = r.getActions(HtmlPublisherTarget.HTMLBuildAction.class);
                 for (HtmlPublisherTarget.HTMLBuildAction report : reports) {
-                    actions.add(report.getHTMLTarget().getProjectAction(j));
+                    actions.add(report.getHTMLTarget().getProjectAction(j, ""));
                 }
                 
                 // If reports are being saved on the project level
                 List<HtmlPublisherTarget.HTMLPublishedForProjectMarkerAction> projectLevelReports = 
                         r.getActions(HtmlPublisherTarget.HTMLPublishedForProjectMarkerAction.class);
                 for (HtmlPublisherTarget.HTMLPublishedForProjectMarkerAction report : projectLevelReports) {
-                    actions.add(report.getHTMLTarget().getProjectAction(j));
+                    actions.add(report.getHTMLTarget().getProjectAction(j, ""));
                 }
             }       
         }
