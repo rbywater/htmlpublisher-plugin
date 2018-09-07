@@ -59,17 +59,18 @@ import org.kohsuke.accmod.restrictions.NoExternalUse;
  *
  * @author Kohsuke Kawaguchi
  * @author Mike Rooney
+ * @author Richard Bywater
  */
 public class HtmlPublisher extends Recorder {
-    private final ArrayList<HtmlPublisherTarget> reportTargets;
+    private final ArrayList<AbstractHtmlPublisherTarget> reportTargets;
 
     @DataBoundConstructor
     @Restricted(NoExternalUse.class)
-    public HtmlPublisher(List<HtmlPublisherTarget> reportTargets) {
-        this.reportTargets = reportTargets != null ? new ArrayList<HtmlPublisherTarget>(reportTargets) : new ArrayList<HtmlPublisherTarget>();
+    public HtmlPublisher(List<AbstractHtmlPublisherTarget> reportTargets) {
+        this.reportTargets = reportTargets != null ? new ArrayList<AbstractHtmlPublisherTarget>(reportTargets) : new ArrayList<AbstractHtmlPublisherTarget>();
     }
 
-    public ArrayList<HtmlPublisherTarget> getReportTargets() {
+    public ArrayList<AbstractHtmlPublisherTarget> getReportTargets() {
         return this.reportTargets;
     }
 
@@ -199,7 +200,7 @@ public class HtmlPublisher extends Recorder {
      * @since TODO
      */
     public static boolean publishReports(Run<?, ?> build, FilePath workspace, Launcher launcher, TaskListener listener,
-            List<HtmlPublisherTarget> reportTargets, Class<?> publisherClass) throws InterruptedException {
+                                         List<AbstractHtmlPublisherTarget> reportTargets, Class<?> publisherClass) throws InterruptedException {
         listener.getLogger().println("[htmlpublisher] Archiving HTML reports...");
 
         // Grab the contents of the header and footer as arrays
@@ -219,7 +220,7 @@ public class HtmlPublisher extends Recorder {
         for (int i=0; i < reportTargets.size(); i++) {
             // Create an array of lines we will eventually write out, initially the header.
             ArrayList<String> reportLines = new ArrayList<String>(headerLines);
-            HtmlPublisherTarget reportTarget = reportTargets.get(i);
+            AbstractHtmlPublisherTarget reportTarget = reportTargets.get(i);
             boolean keepAll = reportTarget.getKeepAll();
             boolean allowMissing = reportTarget.getAllowMissing();
 
@@ -336,7 +337,7 @@ public class HtmlPublisher extends Recorder {
             return Collections.emptyList();
         } else {
             ArrayList<Action> actions = new ArrayList<Action>();
-            for (HtmlPublisherTarget target : this.reportTargets) {
+            for (AbstractHtmlPublisherTarget target : this.reportTargets) {
                 actions.add(target.getProjectAction(project));
                 if (project instanceof MatrixProject && ((MatrixProject) project).getActiveConfigurations() != null){
                     for (MatrixConfiguration mc : ((MatrixProject) project).getActiveConfigurations()){

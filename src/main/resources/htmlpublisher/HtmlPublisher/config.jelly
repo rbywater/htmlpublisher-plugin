@@ -8,13 +8,12 @@
     See global.jelly for a general discussion about jelly script.
   -->
   <f:entry title="${%Reports}">
-    <!--TODO: migrate to the new version of repeatableProperty with invokeBody support-->
-    <htmlpublisher:repeatableProperty field="reportTargets">
-      <f:entry title=""> 
-        <div align="right"> 
-          <f:repeatableDeleteButton value="${%Delete report}"/> 
-        </div> 
-      </f:entry>
-    </htmlpublisher:repeatableProperty>
+      <f:repeatableHeteroProperty field="reportTargets" honorOrder="true" hasHeader="true">
+        <f:entry title="">
+          <div align="right">
+            <f:repeatableDeleteButton/>
+          </div>
+        </f:entry>
+      </f:repeatableHeteroProperty>
   </f:entry>
 </j:jelly>

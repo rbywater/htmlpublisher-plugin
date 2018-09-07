@@ -24,7 +24,7 @@
 package htmlpublisher.workflow;
 
 import htmlpublisher.HtmlPublisher;
-import htmlpublisher.HtmlPublisherTarget;
+import htmlpublisher.AbstractHtmlPublisherTarget;
 import hudson.AbortException;
 import hudson.FilePath;
 import hudson.Launcher;
@@ -59,7 +59,7 @@ public class PublishHTMLStepExecution extends AbstractSynchronousNonBlockingStep
     
     @Override
     protected Void run() throws Exception {             
-        final HtmlPublisherTarget target = step.getTarget();
+        final AbstractHtmlPublisherTarget target = step.getTarget();
         if (target == null) {
             throw new AbortException("Cannot publish the report. Target is not specified");
         }

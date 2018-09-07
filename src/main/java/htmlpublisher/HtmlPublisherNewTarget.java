@@ -2,47 +2,35 @@ package htmlpublisher;
 
 import com.google.common.base.Charsets;
 import com.infradna.tool.bridge_method_injector.WithBridgeMethods;
+import hudson.Extension;
 import hudson.FilePath;
 import hudson.Util;
-import hudson.model.AbstractItem;
-import hudson.model.Action;
-import hudson.model.DirectoryBrowserSupport;
-import hudson.model.ProminentProjectAction;
-import hudson.model.Run;
-import hudson.Extension;
-import hudson.model.AbstractBuild;
-import hudson.model.InvisibleAction;
-import hudson.model.Job;
-
-
-import java.io.File;
-import java.io.IOException;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import javax.annotation.Nonnull;
-
-import javax.servlet.ServletException;
-
+import hudson.model.*;
 import hudson.util.HttpResponses;
 import jenkins.model.RunAction2;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.lang.StringUtils;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
-
+import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
-import org.kohsuke.stapler.DataBoundConstructor;
+
+import javax.annotation.Nonnull;
+import javax.servlet.ServletException;
+import java.io.File;
+import java.io.IOException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * A representation of an HTML directory to archive and publish.
  *
- * @author Mike Rooney
  * @author Richard Bywater
  *
  */
-public class HtmlPublisherTarget extends AbstractHtmlPublisherTarget {
+public class HtmlPublisherNewTarget extends AbstractHtmlPublisherTarget {
     /**
      * The name of the report to display for the build/project, such as "Code Coverage"
      */
@@ -90,10 +78,10 @@ public class HtmlPublisherTarget extends AbstractHtmlPublisherTarget {
     private String includes;
 
     /**
-     * @deprecated Use {@link #HtmlPublisherTarget(java.lang.String, java.lang.String, java.lang.String, java.lang.String, boolean, boolean, boolean)}.
+     * @deprecated Use {@link #HtmlPublisherNewTarget(String, String, String, String, boolean, boolean, boolean)}.
      */
     @Deprecated
-    public HtmlPublisherTarget(String reportName, String reportDir, String reportFiles, boolean keepAll, boolean allowMissing) {
+    public HtmlPublisherNewTarget(String reportName, String reportDir, String reportFiles, boolean keepAll, boolean allowMissing) {
         this(reportName, reportDir, reportFiles, "", keepAll, false, allowMissing);
     }
 
@@ -114,7 +102,7 @@ public class HtmlPublisherTarget extends AbstractHtmlPublisherTarget {
      * @since 1.4
      */
     @DataBoundConstructor
-    public HtmlPublisherTarget(String reportName, String reportDir, String reportFiles, String reportTitles, boolean keepAll, boolean alwaysLinkToLastBuild, boolean allowMissing) {
+    public HtmlPublisherNewTarget(String reportName, String reportDir, String reportFiles, String reportTitles, boolean keepAll, boolean alwaysLinkToLastBuild, boolean allowMissing) {
         this.reportName = StringUtils.trim(reportName);
         this.reportDir = StringUtils.trim(reportDir);
         this.reportFiles = StringUtils.trim(reportFiles);
@@ -135,7 +123,7 @@ public class HtmlPublisherTarget extends AbstractHtmlPublisherTarget {
      * @param allowMissing If true, blocks the build failure if the report is missing
      * @since 1.4
      */
-    public HtmlPublisherTarget(String reportName, String reportDir, String reportFiles, boolean keepAll, boolean alwaysLinkToLastBuild, boolean allowMissing) {
+    public HtmlPublisherNewTarget(String reportName, String reportDir, String reportFiles, boolean keepAll, boolean alwaysLinkToLastBuild, boolean allowMissing) {
         this(reportName, reportDir, reportFiles, null, keepAll, alwaysLinkToLastBuild, allowMissing);
     }
 
@@ -222,11 +210,11 @@ public class HtmlPublisherTarget extends AbstractHtmlPublisherTarget {
     }
 
     protected abstract class BaseHTMLAction implements Action {
-        private HtmlPublisherTarget actualHtmlPublisherTarget;
+        private HtmlPublisherNewTarget actualHtmlPublisherTarget;
 
         protected transient AbstractItem project;
 
-        public BaseHTMLAction(HtmlPublisherTarget actualHtmlPublisherTarget) {
+        public BaseHTMLAction(HtmlPublisherNewTarget actualHtmlPublisherTarget) {
             this.actualHtmlPublisherTarget = actualHtmlPublisherTarget;
         }
 
@@ -267,7 +255,7 @@ public class HtmlPublisherTarget extends AbstractHtmlPublisherTarget {
 
         private transient HTMLBuildAction actualBuildAction;
 
-        public HTMLAction(AbstractItem project, HtmlPublisherTarget actualHtmlPublisherTarget) {
+        public HTMLAction(AbstractItem project, HtmlPublisherNewTarget actualHtmlPublisherTarget) {
             super(actualHtmlPublisherTarget);
             this.project = project;
         }
@@ -324,12 +312,13 @@ public class HtmlPublisherTarget extends AbstractHtmlPublisherTarget {
         }
 
         /**
-         * Gets {@link HtmlPublisherTarget}, for which the action has been created.
+         * Gets {@link HtmlPublisherNewTarget}, for which the action has been created.
          * @return HTML Report description
          * @since TODO
          */
-        public @Nonnull HtmlPublisherTarget getHTMLTarget() {
-            return HtmlPublisherTarget.this;
+        public @Nonnull
+        HtmlPublisherNewTarget getHTMLTarget() {
+            return HtmlPublisherNewTarget.this;
         }
 
         @Restricted(NoExternalUse.class) // read by Groovy view
@@ -347,9 +336,9 @@ public class HtmlPublisherTarget extends AbstractHtmlPublisherTarget {
      */
     public static class HTMLPublishedForProjectMarkerAction extends InvisibleAction implements RunAction2 {
         private transient Run<?, ?> build;
-        private final HtmlPublisherTarget actualHtmlPublisherTarget;
+        private final HtmlPublisherNewTarget actualHtmlPublisherTarget;
 
-        public HTMLPublishedForProjectMarkerAction(Run<?, ?> build, HtmlPublisherTarget actualHtmlPublisherTarget) {
+        public HTMLPublishedForProjectMarkerAction(Run<?, ?> build, HtmlPublisherNewTarget actualHtmlPublisherTarget) {
             this.actualHtmlPublisherTarget = actualHtmlPublisherTarget;
             this.build = build;
         }
@@ -374,7 +363,7 @@ public class HtmlPublisherTarget extends AbstractHtmlPublisherTarget {
             this.build = r;
         }
 
-        public HtmlPublisherTarget getHTMLTarget() {
+        public HtmlPublisherNewTarget getHTMLTarget() {
             return actualHtmlPublisherTarget;
         }
     }
@@ -384,7 +373,7 @@ public class HtmlPublisherTarget extends AbstractHtmlPublisherTarget {
 
         private String wrapperChecksum;
 
-        public HTMLBuildAction(Run<?, ?> build, HtmlPublisherTarget actualHtmlPublisherTarget) {
+        public HTMLBuildAction(Run<?, ?> build, HtmlPublisherNewTarget actualHtmlPublisherTarget) {
             super(actualHtmlPublisherTarget);
             this.build = build;
         }
@@ -414,12 +403,13 @@ public class HtmlPublisherTarget extends AbstractHtmlPublisherTarget {
         }
 
         /**
-         * Gets {@link HtmlPublisherTarget}, for which the action has been created.
+         * Gets {@link HtmlPublisherNewTarget}, for which the action has been created.
          * @return HTML Report description
          * @since TODO
          */
-        public @Nonnull HtmlPublisherTarget getHTMLTarget() {
-            return HtmlPublisherTarget.this;
+        public @Nonnull
+        HtmlPublisherNewTarget getHTMLTarget() {
+            return HtmlPublisherNewTarget.this;
         }
 
         @Override
@@ -516,7 +506,7 @@ public class HtmlPublisherTarget extends AbstractHtmlPublisherTarget {
         if (getClass() != obj.getClass()) {
             return false;
         }
-        final HtmlPublisherTarget other = (HtmlPublisherTarget) obj;
+        final HtmlPublisherNewTarget other = (HtmlPublisherNewTarget) obj;
         if ((this.reportName == null) ? (other.reportName != null) : !this.reportName.equals(other.reportName)) {
             return false;
         }
@@ -542,6 +532,6 @@ public class HtmlPublisherTarget extends AbstractHtmlPublisherTarget {
     public static class DescriptorImpl extends AbstractHtmlPublisherTargetDescriptor {
         @Nonnull
         @Override
-        public String getDisplayName() { return "Legacy Report"; }
+        public String getDisplayName() { return "New Report"; }
     }
 }
