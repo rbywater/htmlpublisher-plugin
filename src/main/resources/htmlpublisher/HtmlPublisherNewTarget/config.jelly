@@ -1,7 +1,7 @@
 <?jelly escape-by-default='true'?>
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" 
          xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
-  
+
   <f:entry field="reportDir" title="${%reportDir.title}">
     <f:textbox/>
   </f:entry>
@@ -33,6 +33,13 @@
     </f:entry>
     <f:entry field="includes" title="${%reportFiles.includes}" description="${%reportFiles.includesHelp}">
       <f:textbox default="**/*"/>
+    </f:entry>
+
+    <f:entry field="${reportId != null ? null : 'reportId'}" title="${%reportId.title}">
+        <f:textbox name="_.reportId"
+                   value="${reportId != null ? reportId : null}"
+                   readonly="true"
+        />
     </f:entry>
   </f:advanced>
 </j:jelly>

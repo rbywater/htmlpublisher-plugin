@@ -33,7 +33,7 @@ public class HtmlPublisherIntegrationTest {
     @Test
     public void testConfigRoundtrip() throws Exception {
         FreeStyleProject p = j.createFreeStyleProject();
-        HtmlPublisherTarget[] l = {
+        AbstractHtmlPublisherTarget[] l = {
                 new HtmlPublisherTarget("a", "b", "c", "", true, true, false),
                 new HtmlPublisherTarget("", "", "", "", false, false, false)
         };
@@ -70,7 +70,7 @@ public class HtmlPublisherIntegrationTest {
         String includes = "tab2.html";
         target2.setIncludes(includes);
         assertEquals(includes, target2.getIncludes());
-        HtmlPublisherTarget[] l = { target1, target2 };
+        AbstractHtmlPublisherTarget[] l = { target1, target2 };
         p.getPublishersList().add(new HtmlPublisher(Arrays.asList(l)));
         AbstractBuild build = j.buildAndAssertSuccess(p);
         File base = new File(build.getRootDir(), "htmlreports");
@@ -100,7 +100,7 @@ public class HtmlPublisherIntegrationTest {
             }
         });
         HtmlPublisherTarget target2 = new HtmlPublisherTarget("reportname", reportDir, "${MYREPORTFILES}", "${MYREPORTTITLE}", true, true, false );
-        List<HtmlPublisherTarget> targets = new ArrayList<>();
+        List<AbstractHtmlPublisherTarget> targets = new ArrayList<>();
         targets.add(target2);
         p.getPublishersList().add(new HtmlPublisher(targets));
         AbstractBuild build = j.buildAndAssertSuccess(p);

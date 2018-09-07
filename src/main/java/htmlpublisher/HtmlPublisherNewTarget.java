@@ -10,6 +10,8 @@ import hudson.util.HttpResponses;
 import jenkins.model.RunAction2;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.builder.EqualsBuilder;
+import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
 import org.kohsuke.stapler.DataBoundConstructor;
@@ -21,6 +23,7 @@ import javax.annotation.Nonnull;
 import javax.servlet.ServletException;
 import java.io.File;
 import java.io.IOException;
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -31,6 +34,12 @@ import java.util.regex.Pattern;
  *
  */
 public class HtmlPublisherNewTarget extends AbstractHtmlPublisherTarget {
+
+    /**
+     * The unique ID of the report - this will remain the same regardless of any name changes
+     * to the report
+     */
+    private final String reportId;
     /**
      * The name of the report to display for the build/project, such as "Code Coverage"
      */
@@ -51,7 +60,7 @@ public class HtmlPublisherNewTarget extends AbstractHtmlPublisherTarget {
      */
     private final boolean alwaysLinkToLastBuild;
 
-    private String reportTitles;
+    private final String reportTitles;
     /**
      * If true, archive reports for all successful builds, otherwise only the most recent.
      */
@@ -62,11 +71,7 @@ public class HtmlPublisherNewTarget extends AbstractHtmlPublisherTarget {
      */
     private final boolean allowMissing;
 
-    /**
-     * Do not use, but keep to maintain compatibility with older releases. See JENKINS-31366.
-     */
-    @Deprecated
-    private transient String wrapperName;
+    private final String includes;
 
     /**
      * The name of the file which will be used as the wrapper index.
@@ -75,22 +80,9 @@ public class HtmlPublisherNewTarget extends AbstractHtmlPublisherTarget {
 
     public static final String INCLUDE_ALL_PATTERN="**/*";
 
-    private String includes;
-
-    /**
-     * @deprecated Use {@link #HtmlPublisherNewTarget(String, String, String, String, boolean, boolean, boolean)}.
-     */
-    @Deprecated
-    public HtmlPublisherNewTarget(String reportName, String reportDir, String reportFiles, boolean keepAll, boolean allowMissing) {
-        this(reportName, reportDir, reportFiles, "", keepAll, false, allowMissing);
-    }
-
-    public String getReportTitles() {
-        return reportTitles;
-    }
-
     /**
      * Constructor.
+     * @param reportId The unique ID for this report
      * @param reportName Report name
      * @param reportDir Source directory in the job workspace
      * @param reportFiles Files to be published
@@ -99,10 +91,16 @@ public class HtmlPublisherNewTarget extends AbstractHtmlPublisherTarget {
      * @param alwaysLinkToLastBuild If true, the job action will refer the latest build.
      *      Otherwise, the latest successful one will be referenced
      * @param allowMissing If true, blocks the build failure if the report is missing
-     * @since 1.4
+     * @param includes
+     * @since 1.17
      */
     @DataBoundConstructor
-    public HtmlPublisherNewTarget(String reportName, String reportDir, String reportFiles, String reportTitles, boolean keepAll, boolean alwaysLinkToLastBuild, boolean allowMissing) {
+    public HtmlPublisherNewTarget(String reportId, String reportName, String reportDir, String reportFiles, String reportTitles, boolean keepAll, boolean alwaysLinkToLastBuild, boolean allowMissing, String includes) {
+        if (StringUtils.isBlank(reportId)) {
+            this.reportId = UUID.randomUUID().toString();
+        } else {
+            this.reportId = reportId;
+        }
         this.reportName = StringUtils.trim(reportName);
         this.reportDir = StringUtils.trim(reportDir);
         this.reportFiles = StringUtils.trim(reportFiles);
@@ -110,27 +108,20 @@ public class HtmlPublisherNewTarget extends AbstractHtmlPublisherTarget {
         this.keepAll = keepAll;
         this.alwaysLinkToLastBuild = alwaysLinkToLastBuild;
         this.allowMissing = allowMissing;
+        this.includes = includes;
     }
 
-    /**
-     * Constructor.
-     * @param reportName Report name
-     * @param reportDir Source directory in the job workspace
-     * @param reportFiles Files to be published
-     * @param keepAll True if the report should be stored for all builds
-     * @param alwaysLinkToLastBuild If true, the job action will refer the latest build.
-     *      Otherwise, the latest successful one will be referenced
-     * @param allowMissing If true, blocks the build failure if the report is missing
-     * @since 1.4
-     */
-    public HtmlPublisherNewTarget(String reportName, String reportDir, String reportFiles, boolean keepAll, boolean alwaysLinkToLastBuild, boolean allowMissing) {
-        this(reportName, reportDir, reportFiles, null, keepAll, alwaysLinkToLastBuild, allowMissing);
+    public String getReportId() {
+        return reportId;
+    }
+
+    public String getReportTitles() {
+        return reportTitles;
     }
 
     public String getReportName() {
         return this.reportName;
     }
-
 
     public String getReportDir() {
         return this.reportDir;
@@ -191,7 +182,7 @@ public class HtmlPublisherNewTarget extends AbstractHtmlPublisherTarget {
      * Gets the directory where the HTML report is stored for the given project.
      */
     private File getProjectArchiveDir(AbstractItem project) {
-        return getProjectArchiveDir(project, getSanitizedName());
+        return getProjectArchiveDir(project, getReportId());
     }
 
     private File getProjectArchiveDir(AbstractItem project, String dirName) {
@@ -201,7 +192,7 @@ public class HtmlPublisherNewTarget extends AbstractHtmlPublisherTarget {
      * Gets the directory where the HTML report is stored for the given build.
      */
     private File getBuildArchiveDir(Run run) {
-        return getBuildArchiveDir(run, getSanitizedName());
+        return getBuildArchiveDir(run, getReportId());
     }
 
 
@@ -277,7 +268,7 @@ public class HtmlPublisherNewTarget extends AbstractHtmlPublisherTarget {
 
                     if (javadocDir.exists()) {
                         for (HTMLBuildAction a : run.getActions(HTMLBuildAction.class)) {
-                            if (a.getHTMLTarget().getReportName().equals(getHTMLTarget().getReportName())) {
+                            if (a.getHTMLTarget().getReportId().equals(getHTMLTarget().getReportId())) {
                                 actualBuildAction = a;
                             }
                         }
@@ -466,36 +457,24 @@ public class HtmlPublisherNewTarget extends AbstractHtmlPublisherTarget {
     }
 
     /**
-     *
-     * @param includes  Ant GLOB pattern
-     */
-    @DataBoundSetter
-    public void setIncludes(String includes) {
-        this.includes = includes;
-    }
-
-    /**
      * Called by XStream after object construction
      * @return modified object
      */
     protected Object readResolve() {
-        if (includes == null) {
-            //backward compatibility
-            includes = INCLUDE_ALL_PATTERN;
-        }
         return this;
     }
 
     @Override
     public int hashCode() {
-        int hash = 5;
-        hash = 97 * hash + (this.reportName != null ? this.reportName.hashCode() : 0);
-        hash = 97 * hash + (this.reportDir != null ? this.reportDir.hashCode() : 0);
-        hash = 97 * hash + (this.reportFiles != null ? this.reportFiles.hashCode() : 0);
-        hash = 97 * hash + (this.alwaysLinkToLastBuild ? 1 : 0);
-        hash = 97 * hash + (this.keepAll ? 1 : 0);
-        hash = 97 * hash + (this.allowMissing ? 1 : 0);
-        return hash;
+        return new HashCodeBuilder(11, 17)
+                .append(reportId)
+                .append(reportName)
+                .append(reportDir)
+                .append(reportFiles)
+                .append(alwaysLinkToLastBuild)
+                .append(keepAll)
+                .append(allowMissing)
+                .toHashCode();
     }
 
     @Override
@@ -503,29 +482,22 @@ public class HtmlPublisherNewTarget extends AbstractHtmlPublisherTarget {
         if (obj == null) {
             return false;
         }
+        if (obj == this) {
+            return true;
+        }
         if (getClass() != obj.getClass()) {
             return false;
         }
         final HtmlPublisherNewTarget other = (HtmlPublisherNewTarget) obj;
-        if ((this.reportName == null) ? (other.reportName != null) : !this.reportName.equals(other.reportName)) {
-            return false;
-        }
-        if ((this.reportDir == null) ? (other.reportDir != null) : !this.reportDir.equals(other.reportDir)) {
-            return false;
-        }
-        if ((this.reportFiles == null) ? (other.reportFiles != null) : !this.reportFiles.equals(other.reportFiles)) {
-            return false;
-        }
-        if (this.alwaysLinkToLastBuild != other.alwaysLinkToLastBuild) {
-            return false;
-        }
-        if (this.keepAll != other.keepAll) {
-            return false;
-        }
-        if (this.allowMissing != other.allowMissing) {
-            return false;
-        }
-        return true;
+        return new EqualsBuilder().appendSuper(super.equals(obj))
+                .append(reportId, other.reportId)
+                .append(reportName, other.reportName)
+                .append(reportDir, other.reportDir)
+                .append(reportFiles, other.reportFiles)
+                .append(alwaysLinkToLastBuild, other.alwaysLinkToLastBuild)
+                .append(keepAll, other.keepAll)
+                .append(allowMissing, other.allowMissing)
+                .isEquals();
     }
 
     @Extension
