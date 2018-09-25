@@ -22,8 +22,6 @@ public abstract class AbstractHtmlPublisherTarget extends AbstractDescribableImp
 
     public abstract String getReportDir();
 
-    public abstract String getSanitizedName();
-
     public abstract String getIncludes();
 
     public abstract void handleAction(Run<?, ?> build, String checksum);
@@ -31,4 +29,10 @@ public abstract class AbstractHtmlPublisherTarget extends AbstractDescribableImp
     public abstract String getWrapperName();
 
     public abstract Action getProjectAction(AbstractItem project);
+
+    public abstract String getReportId();
+
+    public abstract String getReportName();
+
+    public abstract boolean getAlwaysLinkToLastBuild();
 }

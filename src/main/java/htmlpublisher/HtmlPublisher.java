@@ -274,7 +274,7 @@ public class HtmlPublisher extends Recorder {
                 reportLines.add("<script type=\"text/javascript\">document.getElementById(\"hudson_link\").href=\"" + jobUrl + "\";</script>");
             }
 
-            reportLines.add("<script type=\"text/javascript\">document.getElementById(\"zip_link\").href=\"*zip*/" + reportTarget.getSanitizedName() + ".zip\";</script>");
+            reportLines.add("<script type=\"text/javascript\">document.getElementById(\"zip_link\").href=\"*zip*/" + reportTarget.getReportId() + ".zip\";</script>");
 
             try {
                 if (!archiveDir.exists() && !allowMissing) {

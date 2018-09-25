@@ -164,6 +164,7 @@ public class HtmlPublisherTarget extends AbstractHtmlPublisherTarget {
            return this.allowMissing;
     }
 
+
     /**
      * Actually not safe, this allowed directory traversal (SECURITY-784).
      * @return
@@ -222,11 +223,11 @@ public class HtmlPublisherTarget extends AbstractHtmlPublisherTarget {
     }
 
     protected abstract class BaseHTMLAction implements Action {
-        private HtmlPublisherTarget actualHtmlPublisherTarget;
+        private AbstractHtmlPublisherTarget actualHtmlPublisherTarget;
 
         protected transient AbstractItem project;
 
-        public BaseHTMLAction(HtmlPublisherTarget actualHtmlPublisherTarget) {
+        public BaseHTMLAction(AbstractHtmlPublisherTarget actualHtmlPublisherTarget) {
             this.actualHtmlPublisherTarget = actualHtmlPublisherTarget;
         }
 
@@ -235,7 +236,7 @@ public class HtmlPublisherTarget extends AbstractHtmlPublisherTarget {
         }
 
         public String getDisplayName() {
-            String action = actualHtmlPublisherTarget.reportName;
+            String action = actualHtmlPublisherTarget.getReportName();
             return dir().exists() ? action : null;
         }
 
@@ -462,6 +463,11 @@ public class HtmlPublisherTarget extends AbstractHtmlPublisherTarget {
 
     public Action getProjectAction(AbstractItem item) {
         return new HTMLAction(item, this);
+    }
+
+    @Override
+    public String getReportId() {
+        return this.getSanitizedName();
     }
 
     /**

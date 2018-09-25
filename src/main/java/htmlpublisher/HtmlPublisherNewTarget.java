@@ -6,6 +6,7 @@ import hudson.Extension;
 import hudson.FilePath;
 import hudson.Util;
 import hudson.model.*;
+import hudson.util.FormValidation;
 import hudson.util.HttpResponses;
 import jenkins.model.RunAction2;
 import org.apache.commons.codec.binary.Hex;
@@ -14,10 +15,7 @@ import org.apache.commons.lang.builder.EqualsBuilder;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
-import org.kohsuke.stapler.DataBoundConstructor;
-import org.kohsuke.stapler.DataBoundSetter;
-import org.kohsuke.stapler.StaplerRequest;
-import org.kohsuke.stapler.StaplerResponse;
+import org.kohsuke.stapler.*;
 
 import javax.annotation.Nonnull;
 import javax.servlet.ServletException;
@@ -99,7 +97,15 @@ public class HtmlPublisherNewTarget extends AbstractHtmlPublisherTarget {
         if (StringUtils.isBlank(reportId)) {
             this.reportId = UUID.randomUUID().toString();
         } else {
-            this.reportId = reportId;
+            Pattern p = Pattern.compile("[^a-zA-Z0-9-]");
+            Matcher m = p.matcher(reportId);
+            StringBuffer sb = new StringBuffer();
+            while (m.find()) {
+                String match = m.group();
+                m.appendReplacement(sb, "_" + Hex.encodeHexString(match.getBytes(Charsets.UTF_8)));
+            }
+            m.appendTail(sb);
+            this.reportId = sb.toString();
         }
         this.reportName = StringUtils.trim(reportName);
         this.reportDir = StringUtils.trim(reportDir);
@@ -141,33 +147,6 @@ public class HtmlPublisherNewTarget extends AbstractHtmlPublisherTarget {
 
     public boolean getAllowMissing() {
            return this.allowMissing;
-    }
-
-    /**
-     * Actually not safe, this allowed directory traversal (SECURITY-784).
-     * @return
-     */
-    private String getLegacySanitizedName() {
-        String safeName = this.reportName;
-        safeName = safeName.replace(" ", "_");
-        return safeName;
-    }
-
-    public String getSanitizedName() {
-        return sanitizeReportName(this.reportName);
-    }
-
-    @Restricted(NoExternalUse.class)
-    public static String sanitizeReportName(String reportName) {
-        Pattern p = Pattern.compile("[^a-zA-Z0-9-]");
-        Matcher m = p.matcher(reportName);
-        StringBuffer sb = new StringBuffer();
-        while (m.find()) {
-            String match = m.group();
-            m.appendReplacement(sb, "_" + Hex.encodeHexString(match.getBytes(Charsets.UTF_8)));
-        }
-        m.appendTail(sb);
-        return sb.toString();
     }
 
     public String getWrapperName() {
@@ -262,7 +241,7 @@ public class HtmlPublisherNewTarget extends AbstractHtmlPublisherTarget {
                     File javadocDir = getBuildArchiveDir(run);
 
                     if (!javadocDir.exists()) {
-                        javadocDir = getBuildArchiveDir(run, getLegacySanitizedName());
+                        javadocDir = getBuildArchiveDir(run, getReportId());
                     }
                    // TODO not sure about this change
 
@@ -282,7 +261,7 @@ public class HtmlPublisherNewTarget extends AbstractHtmlPublisherTarget {
             if (projectArchiveDir.exists()) {
                 return projectArchiveDir;
             }
-            File legacyProjectArchiveDir = getProjectArchiveDir(this.project, getLegacySanitizedName());
+            File legacyProjectArchiveDir = getProjectArchiveDir(this.project, getReportId());
             if (legacyProjectArchiveDir.exists()) {
                 return legacyProjectArchiveDir;
             }
@@ -386,7 +365,7 @@ public class HtmlPublisherNewTarget extends AbstractHtmlPublisherTarget {
             if (buildArchiveDir.exists()) {
                 return buildArchiveDir;
             }
-            File legacyBuildArchiveDir = getBuildArchiveDir(this.build, getLegacySanitizedName());
+            File legacyBuildArchiveDir = getBuildArchiveDir(this.build, getReportId());
             if (legacyBuildArchiveDir.exists()) {
                 return legacyBuildArchiveDir;
             }
@@ -505,5 +484,15 @@ public class HtmlPublisherNewTarget extends AbstractHtmlPublisherTarget {
         @Nonnull
         @Override
         public String getDisplayName() { return "New Report"; }
+
+        public FormValidation doCheckReportId(@QueryParameter String value) {
+            Pattern p = Pattern.compile("[^a-zA-Z0-9-_]");
+            Matcher m = p.matcher(value);
+            if (m.find()) {
+                return FormValidation.error("Invalid Report Id");
+            }
+
+            return FormValidation.ok();
+        }
     }
 }
